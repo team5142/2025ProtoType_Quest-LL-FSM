@@ -342,39 +342,17 @@ public class QuestNavSubsystem extends SubsystemBase {
     if (questNav.isTracking()) {
       // This method will be called once per scheduler run
 
-      // QuestNav telemetry
+      // QuestNav telemetry (only when debug enabled)
       if (DebugTelemetrySubsystems.questnav) {
-        SmartDashboard.putString("qTranformedPose: ", getQuestRobotPose().toString());
-        SmartDashboard.putString("qTruePose: ", getQuestPose().toString());
-        SmartDashboard.putNumber("TimeStamp: ", getQTimeStamp());
-        SmartDashboard.putNumber("TimeStampA: ", getQAppTimeStamp());
-        SmartDashboard.putNumber("TimeStampFPGS: ", Utils.fpgaToCurrentTime(getQTimeStamp()));
-        SmartDashboard.putNumber("Time FPGA: ", Timer.getFPGATimestamp());
-        if(poseFrames != null) {
-          SmartDashboard.putNumber("qFrames", poseFrames.length);
-        }
+        SmartDashboard.putString("QuestNav Robot Pose", getQuestRobotPose().toString());
+        SmartDashboard.putString("QuestNav True Pose", getQuestPose().toString());
+        SmartDashboard.putNumber("QuestNav Timestamp", getQTimeStamp());
+        SmartDashboard.putNumber("QuestNav FPGA Time", Utils.fpgaToCurrentTime(getQTimeStamp()));
+        SmartDashboard.putNumber("QuestNav Frame Count", poseFrames != null ? poseFrames.length : 0);
       }
 
-
-      //update pose Frames
+      // Update pose frames (CRITICAL - this populates data for OdometryUpdatesSubsystem)
       poseFrames = questNav.getAllUnreadPoseFrames();
-      // // Display number of frames provided
-     /* if(SwerveConstants.CTR_ODOMETRY_UPDATE_FROM_QUEST && !isCharacterizationRunning) {
-         for (PoseFrame questFrame : poseFrames) {
-           // Get the pose of the Quest
-           Pose2d questPose = questFrame.questPose();
-           // Get timestamp for when the data was sent
-           double timestamp = questFrame.dataTimestamp();
-
-           // Transform by the mount pose to get your robot pose
-           Pose2d robotPose = questPose.transformBy(QuestNavConstants.ROBOT_TO_QUEST.inverse());
-
-           // You can put some sort of filtering here if you would like!
-
-           // Add the measurement to our estimator
-           RobotContainer.driveSubsystem.addVisionMeasurement(robotPose, timestamp, QuestNavConstants.QUESTNAV_STD_DEVS);
-         }
-       } */
     }
   }
 }

@@ -1,0 +1,41 @@
+# Build outputs
+bin/
+build/
+.gradle/
+*.class
+*.jar
+*.war
+*.nar
+*.ear
+*.zip
+*.tar.gz
+
+# IDE files - keep settings.json for WPILib config
+.vscode/*
+!.vscode/settings.json
+.settings/
+.classpath
+.project
+.factorypath
+*.iml
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Simulation/deploy artifacts
+simgui*.json
+simgui*.ini
+networktables.json
+shuffleboard.json
+*.deploy_db
+
+# Logs
+*.log
+*.tmp
+hs_err_pid*
+
+# Gradle wrapper jar (keep the scripts)
+gradle/wrapper/gradle-wrapper.jar

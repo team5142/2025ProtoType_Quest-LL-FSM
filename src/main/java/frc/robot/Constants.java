@@ -97,8 +97,8 @@ public final class Constants {
 
       public static final double MaxSpeed = 5.21; // m/s
       public static final double MaxAngularRate = 4.71238898038469; // rad/s
-      public static final double DeadbandRatioLinear = 0.1; //determined by calibration method 
-      public static final double DeadbandRatioAngular =  0.1; //determined by calibration method
+      public static final double DeadbandRatioLinear = 0.15; //determined by calibration method 
+      public static final double DeadbandRatioAngular =  0.15; //determined by calibration method
 
       public static final CANBus kCANBus = new CANBus("Canivore", "./logs/example.hoot"); // YOUR CANIVORE NAME
 
@@ -118,7 +118,13 @@ public final class Constants {
                   // stator current limit to help avoid brownouts without impacting performance.
                   .withStatorCurrentLimit(Amps.of(60))
                   .withStatorCurrentLimitEnable(true));
-      public static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration();
+      public static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration()
+          .withCurrentLimits(
+              new CurrentLimitsConfigs()
+                  .withSupplyCurrentLimit(Amps.of(30))
+                  .withSupplyCurrentLimitEnable(true)
+                  .withStatorCurrentLimit(Amps.of(50))
+                  .withStatorCurrentLimitEnable(true));
       public static final CANcoderConfiguration encoderInitialConfigs = new CANcoderConfiguration();
 
       // Added from original TunerConstants (auto-merged):

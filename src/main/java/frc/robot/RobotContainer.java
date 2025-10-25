@@ -41,6 +41,7 @@ import frc.robot.commands.StopRobot;
 import frc.robot.lib.TrajectoryHelper;
 import frc.robot.subsystems.DriveSubsystem;
 import com.pathplanner.lib.commands.PathPlannerAuto;
+import edu.wpi.first.math.filter.SlewRateLimiter;
 
 
 
@@ -62,6 +63,11 @@ public class RobotContainer {
     public static LLAprilTagSubsystem llAprilTagSubsystem = new LLAprilTagSubsystem();
     public static OdometryUpdatesSubsystem odometryUpdateSubsystem = new OdometryUpdatesSubsystem();
 
+    private static final double TELEOP_SPEED_MULTIPLIER = 0.5; // 50% speed
+    // Rate limiters to prevent brownouts from instant joystick inputs
+    private final SlewRateLimiter xLimiter = new SlewRateLimiter(2.0);
+    private final SlewRateLimiter yLimiter = new SlewRateLimiter(2.0);
+    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(3.0);
 
     public RobotContainer() {
         configureBindings();
@@ -134,21 +140,49 @@ public class RobotContainer {
       new JoystickButton(xboxDriveController, 3)
         .onTrue(new InstantCommand(() -> questNavSubsystem.resetQuestOdometry(new Pose2d(10, 10, Rotation2d.k180deg))));
 
-      new JoystickButton(xboxDriveController, 4)
+      /* new JoystickButton(xboxDriveController, 4)
         .onTrue(questNavSubsystem.offsetTranslationCharacterizationCommand())
         .onFalse(new StopRobot());
 
       new JoystickButton(xboxDriveController, 6)
         .onTrue(questNavSubsystem.offsetAngleCharacterizationCommand())
+        .onFalse(new StopRobot()); */
+      new JoystickButton(xboxDriveController, 4)
+        .whileTrue(new PathPlannerAuto("Reef Off"))
         .onFalse(new StopRobot());
-
         // Option 1: If getRightTrigger() returns > 0.5 automatically as boolean
       new JoystickButton(xboxDriveController, 5)
         .whileTrue(new PathPlannerAuto("Reef Bounce"))
         .onFalse(new StopRobot());
-
+      new JoystickButton(xboxDriveController, 6)
+        .whileTrue(new PathPlannerAuto("Reef off and Reef on"))
+        .onFalse(new StopRobot());
     }
+    
+    /*
+     * // Button 3: Reef Bounce auto routine
+        joystick.button(3).whileTrue(
+          Commands.deferredProxy(() -> autoChooser.getSelected())
+        ).onFalse(new StopRobot(driveSubsystem));
       
+        // Button 4: Reef Off auto routine (NEW - replaces QuestNav characterization)
+        joystick.button(4).whileTrue(
+          new PathPlannerAuto("Reef Off")
+        ).onFalse(new StopRobot(driveSubsystem));
+        
+        // QuestNav characterization (COMMENTED OUT - not needed frequently)
+        // joystick.button(4).whileTrue(new QuestOffsetCharacterization(questNavSubsystem, driveSubsystem));
+      
+        // Button 6: Reef Off, Reef On auto routine (NEW - replaces test command)
+        joystick.button(6).whileTrue(
+          new PathPlannerAuto("Reef Off, Reef On")
+        ).onFalse(new StopRobot(driveSubsystem));
+        
+        // QuestNav trajectory test (COMMENTED OUT - not needed frequently)
+        // joystick.button(6).whileTrue(new QuestNavTrajectoryTest(questNavSubsystem, driveSubsystem));
+     * 
+     * 
+     */
 
     public void setYaws() {
     new JoystickButton(xboxDriveController, 8)
@@ -158,23 +192,21 @@ public class RobotContainer {
         .onTrue(new InstantCommand(() -> questNavSubsystem.resetToZeroPose()));
   }
 
+    
      // Driver preferred controls
      private double getDriverXAxis() {
-      //return -xboxController.getLeftStickY();
-      // SmartDashboard.putNumber("X-Axis: ", -xboxDriveController.getLeftStickX());
-      return xboxDriveController.getLeftStickX();
+      double rawInput = xboxDriveController.getLeftStickX() * TELEOP_SPEED_MULTIPLIER;
+      return xLimiter.calculate(rawInput);
     }
   
     private double getDriverYAxis() {
-      //return -xboxController.getLeftStickX();
-      // SmartDashboard.putNumber("Y-Axis: ", -xboxDriveController.getLeftStickY());
-      return xboxDriveController.getLeftStickY();
+      double rawInput = xboxDriveController.getLeftStickY() * TELEOP_SPEED_MULTIPLIER;
+      return yLimiter.calculate(rawInput);
     }
   
     private double getDriverOmegaAxis() {
-      //return -xboxController.getLeftStickOmega();
-      // SmartDashboard.putNumber("Z-Axis: ", -xboxDriveController.getRightStickY() * 0.6);
-      return -xboxDriveController.getRightStickX() * 0.6;
+      double rawInput = -xboxDriveController.getRightStickX() * 0.6 * TELEOP_SPEED_MULTIPLIER;
+      return omegaLimiter.calculate(rawInput);
     }
 
     public static Command runTrajectoryPathPlannerWithForceResetOfStartingPose(String tr,

@@ -9,9 +9,11 @@ import frc.robot.Constants.PathPlannerConstants;
 import frc.robot.Constants.OperatorConstants.OIContants;
 import frc.robot.Constants.OperatorConstants.SwerveConstants;
 import frc.robot.Constants.OperatorConstants.OIContants.ControllerDevice;
+import frc.robot.OdometryUpdates.LLAprilTagConstants.LLVisionConstants.LLCamera;
 import frc.robot.OdometryUpdates.LLAprilTagSubsystem;
 import frc.robot.OdometryUpdates.OdometryUpdatesSubsystem;
 import frc.robot.OdometryUpdates.QuestNavSubsystem;
+
 
 import static edu.wpi.first.units.Units.*;
 
@@ -35,9 +37,12 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.commands.DriveManuallyCommand;
+import frc.robot.commands.LShapeTest;
 import frc.robot.commands.OneMeterForwardPPCommand;
 import frc.robot.commands.ReturnTestPPCommand;
 import frc.robot.commands.StopRobot;
+import frc.robot.commands.TwoMeterTest;
+import frc.robot.lib.LimelightHelpers;
 import frc.robot.lib.TrajectoryHelper;
 import frc.robot.subsystems.DriveSubsystem;
 import com.pathplanner.lib.commands.PathPlannerAuto;
@@ -54,7 +59,7 @@ public class RobotContainer {
     // Use open-loop control for drive motors
     private final Telemetry logger = new Telemetry(SwerveConstants.MaxSpeed);
 
-    private final Controller xboxDriveController = new Controller(OIContants.XBOX_CONTROLLER);
+    private final CommandXboxController xboxDriveController = new CommandXboxController(0);
     public static boolean isAllianceRed = false;
     public static boolean isReversingControllerAndIMUForRed = true;
 
@@ -63,11 +68,11 @@ public class RobotContainer {
     public static LLAprilTagSubsystem llAprilTagSubsystem = new LLAprilTagSubsystem();
     public static OdometryUpdatesSubsystem odometryUpdateSubsystem = new OdometryUpdatesSubsystem();
 
-    private static final double TELEOP_SPEED_MULTIPLIER = 0.5; // 50% speed
+    /* private static final double TELEOP_SPEED_MULTIPLIER = 0.5; // 50% speed
     // Rate limiters to prevent brownouts from instant joystick inputs
     private final SlewRateLimiter xLimiter = new SlewRateLimiter(2.0);
     private final SlewRateLimiter yLimiter = new SlewRateLimiter(2.0);
-    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(3.0);
+    private final SlewRateLimiter omegaLimiter = new SlewRateLimiter(3.0); */
 
     public RobotContainer() {
         configureBindings();
@@ -117,6 +122,41 @@ public class RobotContainer {
 
         // xboxDriveController.x().onTrue(new QuestNavTrajectoryTest())
         //             .onFalse(stopRobotCommand());
+        xboxDriveController.back().onTrue(
+    new InstantCommand(() -> {
+        System.out.println("=== Limelight Test ===");
+        
+        String cam = LLCamera.LLBACK.getCameraName();
+        System.out.println("Testing camera: " + cam);
+        
+        try {
+            boolean hasTarget = LimelightHelpers.getTV(cam);
+            double tagID = LimelightHelpers.getFiducialID(cam);
+            
+            // Null check before accessing pose
+            var pose = LimelightHelpers.getBotPoseEstimate_wpiBlue(cam);
+            
+            System.out.println("Has Target: " + hasTarget);
+            System.out.println("Tag ID: " + (int)tagID);
+            
+            if (pose != null) {
+                System.out.println("Tag Count: " + pose.tagCount);
+                System.out.println("Pose: " + pose.pose);
+                System.out.println("Latency: " + pose.latency + "ms");
+                
+                if (RobotContainer.llAprilTagSubsystem.isAnyReefTagID((int)tagID)) {
+                    System.out.println("✅ REEF TAG!");
+                }
+            } else {
+                System.out.println("❌ Pose is NULL - camera not connected or wrong name");
+            }
+            
+        } catch (Exception e) {
+            System.out.println("❌ ERROR: " + e.getMessage());
+            e.printStackTrace();
+        }
+    })
+    );
     }
 
     public Command stopRobotCommand() {
@@ -130,14 +170,18 @@ public class RobotContainer {
     }
 
     private void testTrajectory() {
-      new JoystickButton(xboxDriveController, 1)
+      xboxDriveController.povUp().onTrue(new TwoMeterTest());
+      // D-Pad RIGHT: L-shape test
+      xboxDriveController.povRight().onTrue(new LShapeTest());
+      
+      xboxDriveController.a()
         .onTrue(new OneMeterForwardPPCommand());
         // new JoystickButton(xboxDriveController, 2)
         // .onTrue(new ThreeMeterForwardPPCommand());
-      new JoystickButton(xboxDriveController, 2)
+      xboxDriveController.b()
         .onTrue(new ReturnTestPPCommand())
         .onFalse(new StopRobot());
-      new JoystickButton(xboxDriveController, 3)
+      xboxDriveController.x()
         .onTrue(new InstantCommand(() -> questNavSubsystem.resetQuestOdometry(new Pose2d(10, 10, Rotation2d.k180deg))));
 
       /* new JoystickButton(xboxDriveController, 4)
@@ -147,14 +191,14 @@ public class RobotContainer {
       new JoystickButton(xboxDriveController, 6)
         .onTrue(questNavSubsystem.offsetAngleCharacterizationCommand())
         .onFalse(new StopRobot()); */
-      new JoystickButton(xboxDriveController, 4)
+      xboxDriveController.y()
         .whileTrue(new PathPlannerAuto("Reef Off"))
         .onFalse(new StopRobot());
         // Option 1: If getRightTrigger() returns > 0.5 automatically as boolean
-      new JoystickButton(xboxDriveController, 5)
+      /* new JoystickButton(xboxDriveController, 5)
         .whileTrue(new PathPlannerAuto("Reef Bounce"))
-        .onFalse(new StopRobot());
-      new JoystickButton(xboxDriveController, 6)
+        .onFalse(new StopRobot()); */
+      xboxDriveController.rightBumper()
         .whileTrue(new PathPlannerAuto("Reef off and Reef on"))
         .onFalse(new StopRobot());
     }
@@ -185,28 +229,57 @@ public class RobotContainer {
      */
 
     public void setYaws() {
-    new JoystickButton(xboxDriveController, 8)
-      .onTrue(new InstantCommand(() -> driveSubsystem.zeroChassisYaw())
-        .andThen(new InstantCommand(()-> questNavSubsystem.zeroYaw())));
-    new JoystickButton(xboxDriveController, 7)
-        .onTrue(new InstantCommand(() -> questNavSubsystem.resetToZeroPose()));
-  }
+      // Button 8 (Start): Zero chassis and Quest yaw
+      xboxDriveController.start()
+          .onTrue(new InstantCommand(() -> driveSubsystem.zeroChassisYaw())
+              .andThen(new InstantCommand(() -> questNavSubsystem.zeroYaw())));
+      
+      // Button 7 (Back): Reset Quest to zero pose
+      xboxDriveController.back()
+          .onTrue(new InstantCommand(() -> questNavSubsystem.resetToZeroPose()));
+      
+      // Button 5 (Left Bumper): Reset to downfield starting pose
+      xboxDriveController.leftBumper()
+      .onTrue(new InstantCommand(() -> {
+          // Get current robot heading to preserve orientation
+          Rotation2d currentHeading = driveSubsystem.getState().Pose.getRotation();
+          
+          // Determine pose based on alliance color
+          Pose2d downfieldPose;
+          if (isAllianceRed) {
+              // Red alliance - downfield on opposite side, keeps current heading
+              downfieldPose = new Pose2d(15.0, 5.5, currentHeading);
+          } else {
+              // Blue alliance - downfield, keeps current heading
+              downfieldPose = new Pose2d(1.5, 5.5, currentHeading);
+          }
+          
+          // Reset both Quest and drive odometry
+          questNavSubsystem.resetQuestOdometry(downfieldPose);
+          driveSubsystem.resetPose(downfieldPose);
+          
+          System.out.println("*** Reset to downfield pose with heading: " + currentHeading.getDegrees() + "°");
+      }));
+    }
 
     
-     // Driver preferred controls
+     // Driver controls - properly scaled to max speeds
      private double getDriverXAxis() {
-      double rawInput = xboxDriveController.getLeftStickX() * TELEOP_SPEED_MULTIPLIER;
-      return xLimiter.calculate(rawInput);
+      // Left stick Y controls forward/backward (field X-axis)
+      // Inverted because joystick up = -1.0, but we want positive = forward
+      return xboxDriveController.getLeftX() * SwerveConstants.MaxSpeed;
     }
   
     private double getDriverYAxis() {
-      double rawInput = xboxDriveController.getLeftStickY() * TELEOP_SPEED_MULTIPLIER;
-      return yLimiter.calculate(rawInput);
+      // Left stick X controls left/right strafe (field Y-axis)
+      // Inverted because joystick right = +1.0, but field Y-axis points left
+      return xboxDriveController.getLeftY() * SwerveConstants.MaxSpeed;
     }
   
     private double getDriverOmegaAxis() {
-      double rawInput = -xboxDriveController.getRightStickX() * 0.6 * TELEOP_SPEED_MULTIPLIER;
-      return omegaLimiter.calculate(rawInput);
+      // Right stick X controls rotation
+      // Inverted for intuitive controls (right stick right = clockwise)
+      return -xboxDriveController.getRightX() * SwerveConstants.MaxAngularRate;
     }
 
     public static Command runTrajectoryPathPlannerWithForceResetOfStartingPose(String tr,

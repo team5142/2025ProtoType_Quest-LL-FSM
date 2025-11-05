@@ -38,6 +38,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants;
 import frc.robot.Constants.DebugTelemetrySubsystems;
 import frc.robot.Constants.OperatorConstants.SwerveConstants;
 import frc.robot.OdometryUpdates.OdometryConstants;
@@ -308,11 +309,13 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                                     .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesXNewtons())
                                     .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesYNewtons())),
                     new PPHolonomicDriveController(
-                            // PID constants for translation
-                            new PIDConstants(10, 0, 0),
-                            // PID constants for rotation
-                            new PIDConstants(7, 0, 0)),
-                    config,
+                        new PIDConstants(SwerveConstants.kTrans_kP,
+                            SwerveConstants.kTrans_kI, 
+                            SwerveConstants.kTrans_kD),
+                        new PIDConstants(SwerveConstants.kRot_kP, 
+                            SwerveConstants.kRot_kI, 
+                            SwerveConstants.kRot_kD)), // Use tuned rotation gains
+                            config,
                     // Assume the path needs to be flipped for Red vs Blue, this is normally the
                     // case
                     () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,

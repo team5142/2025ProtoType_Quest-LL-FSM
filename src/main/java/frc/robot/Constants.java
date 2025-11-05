@@ -16,6 +16,7 @@ import com.ctre.phoenix6.configs.CurrentLimitsConfigs;
 import com.ctre.phoenix6.configs.Pigeon2Configuration;
 import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.configs.MotorOutputConfigs;
 import com.ctre.phoenix6.signals.StaticFeedforwardSignValue;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.ClosedLoopOutputType;
@@ -23,6 +24,7 @@ import com.ctre.phoenix6.swerve.SwerveModuleConstants.DriveMotorArrangement;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerFeedbackType;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants.SteerMotorArrangement;
 import com.ctre.phoenix6.swerve.SwerveModuleConstantsFactory;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Distance;
@@ -46,19 +48,19 @@ public final class Constants {
 
   public static final class EnabledSubsystems {
 
-		public static final boolean chasis = true;
-		public static final boolean ll = true;
-		public static final boolean questnav = true;
-	}
+    public static final boolean chasis = true;
+    public static final boolean ll = true;
+    public static final boolean questnav = true;
+  }
 
-	public static final class DebugTelemetrySubsystems {
-		public static final boolean odometry = true;
-		public static final boolean imu = true;
-		public static final boolean chassis = true;
-		public static final boolean ll = true;
-		public static final boolean questnav = true;
-	}
-  
+  public static final class DebugTelemetrySubsystems {
+    public static final boolean odometry = true;
+    public static final boolean imu = true;
+    public static final boolean chassis = true;
+    public static final boolean ll = true;
+    public static final boolean questnav = true;
+  }
+
   public static class OperatorConstants {
     public static final int kDriverControllerPort = 0;
 
@@ -71,45 +73,54 @@ public final class Constants {
         XBOX_ONEDRIVE // RIghtJ F/B/L/R, LeftJ - rotation
       }
 
-
-
-      public static record ControllerDevice(int portNumber, ControllerDeviceType controllerDeviceType, 
-              double deadbandX, double deadbandY, double deadbandOmega, 
-              boolean cubeControllerLeftStick, boolean cubeControllerRightStick) {}
+      public static record ControllerDevice(int portNumber, ControllerDeviceType controllerDeviceType,
+          double deadbandX, double deadbandY, double deadbandOmega,
+          boolean cubeControllerLeftStick, boolean cubeControllerRightStick) {
+      }
 
       public static ControllerDevice XBOX_CONTROLLER = new ControllerDevice(
-        0, 
-        ControllerDeviceType.XBOX, 
-        0.1, 
-        0.1, 
-        0.1, 
-        false, 
-        false);
+          0,
+          ControllerDeviceType.XBOX,
+          0.1,
+          0.1,
+          0.1,
+          false,
+          false);
 
-   
     }
+
     /** Swerve-wide constants and module mappings */
     public static final class SwerveConstants {
 
-      public static final double CHASSIS_POSE_HISTORY_TIME = 0.6; //seconds
+      public static final double CHASSIS_POSE_HISTORY_TIME = 0.6; // seconds
 
       public static final boolean CTR_ODOMETRY_UPDATE_FROM_QUEST = true;
 
       public static final double MaxSpeed = 5.21; // m/s
       public static final double MaxAngularRate = 4.71238898038469; // rad/s
-      public static final double DeadbandRatioLinear = 0.15; //determined by calibration method 
-      public static final double DeadbandRatioAngular =  0.15; //determined by calibration method
+      public static final double DeadbandRatioLinear = 0.15; // determined by calibration method
+      public static final double DeadbandRatioAngular = 0.15; // determined by calibration method
 
       public static final CANBus kCANBus = new CANBus("Canivore", "./logs/example.hoot"); // YOUR CANIVORE NAME
 
       public static final Pigeon2Configuration pigeonConfigs = null;
-      public static final Slot0Configs steerGains = new Slot0Configs()
-          .withKP(100).withKI(0).withKD(0.5)
-          .withKS(0.1).withKV(2.66).withKA(0)
-          .withStaticFeedforwardSign(StaticFeedforwardSignValue.UseClosedLoopSign);
-      public static final Slot0Configs driveGains = new Slot0Configs()
-          .withKP(0.1).withKI(0).withKD(0)
-          .withKS(0).withKV(0.124);
+      // Steer motor PID gains - TUNED from TunerX project
+      private static final Slot0Configs steerGains = new Slot0Configs()
+          .withKP(100).withKI(0).withKD(0.2)
+          .withKS(0).withKV(0).withKA(0);
+      // Drive motor PID gains - TUNED from TunerX project
+      private static final Slot0Configs driveGains = new Slot0Configs()
+          .withKP(3).withKI(0).withKD(0)
+          .withKS(0).withKV(0).withKA(0);
+      // Rotation controller PID gains - TUNED from TunerX project
+      public static final double kRot_kP = 13.616;
+      public static final double kRot_kI = 0.0;
+      public static final double kRot_kD = 0.1;
+
+      // Translation controller PID gains - PathPlanner auto following
+      public static final double kTrans_kP = 10.0;
+      public static final double kTrans_kI = 0.0;
+      public static final double kTrans_kD = 0.0;
       public static final TalonFXConfiguration steerInitialConfigs = new TalonFXConfiguration()
           .withCurrentLimits(
               new CurrentLimitsConfigs()
@@ -117,14 +128,20 @@ public final class Constants {
                   // relatively low
                   // stator current limit to help avoid brownouts without impacting performance.
                   .withStatorCurrentLimit(Amps.of(60))
-                  .withStatorCurrentLimitEnable(true));
+                  .withStatorCurrentLimitEnable(true))
+          .withMotorOutput(
+              new MotorOutputConfigs()
+                  .withNeutralMode(NeutralModeValue.Brake));
       public static final TalonFXConfiguration driveInitialConfigs = new TalonFXConfiguration()
           .withCurrentLimits(
               new CurrentLimitsConfigs()
-                  .withSupplyCurrentLimit(Amps.of(30))
+                  .withSupplyCurrentLimit(Amps.of(60))
                   .withSupplyCurrentLimitEnable(true)
-                  .withStatorCurrentLimit(Amps.of(50))
-                  .withStatorCurrentLimitEnable(true));
+                  .withStatorCurrentLimit(Amps.of(80))
+                  .withStatorCurrentLimitEnable(true))
+          .withMotorOutput(
+              new MotorOutputConfigs()
+                  .withNeutralMode(NeutralModeValue.Brake));
       public static final CANcoderConfiguration encoderInitialConfigs = new CANcoderConfiguration();
 
       // Added from original TunerConstants (auto-merged):
@@ -136,9 +153,9 @@ public final class Constants {
       public static final double kDriveGearRatio = 6.122448979591837;
       public static final MomentOfInertia kDriveInertia = KilogramSquareMeters.of(0.01);
       public static final DriveMotorArrangement kDriveMotorType = DriveMotorArrangement.TalonFX_Integrated;
-      
+
       public static final int kPigeonId = 14; // YOUR PIGEON ID
-      
+
       public static final Current kSlipCurrent = Amps.of(120.0);
       public static final LinearVelocity kSpeedAt12Volts = MetersPerSecond.of(5.21);
       public static final ClosedLoopOutputType kSteerClosedLoopOutput = ClosedLoopOutputType.Voltage;
@@ -147,7 +164,7 @@ public final class Constants {
       public static final double kSteerGearRatio = 21.428571428571427;
       public static final MomentOfInertia kSteerInertia = KilogramSquareMeters.of(0.01);
       public static final SteerMotorArrangement kSteerMotorType = SteerMotorArrangement.TalonFX_Integrated;
-      public static final Distance kWheelRadius = Inches.of(2);
+      public static final Distance kWheelRadius = Inches.of(1.959);
 
       public static SwerveModuleConstantsFactory<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration> ConstantCreator = new SwerveModuleConstantsFactory<TalonFXConfiguration, TalonFXConfiguration, CANcoderConfiguration>()
           .withDriveMotorGearRatio(kDriveGearRatio)
@@ -175,104 +192,59 @@ public final class Constants {
           .withPigeon2Id(kPigeonId)
           .withPigeon2Configs(pigeonConfigs);
 
-      public static record SwerveModuleConstantsRecord(int driveMotorID, int angleMotorID, int cancoderID, double angleOffset,
-        boolean driveMotorInverted, boolean angleMotorInverted, boolean cancoderInverted) {}
+      public static record SwerveModuleConstantsRecord(int driveMotorID, int angleMotorID, int cancoderID,
+          double angleOffset,
+          boolean driveMotorInverted, boolean angleMotorInverted, boolean cancoderInverted) {
+      }
 
+      // 5142 SWERVE CONSTANTS
 
-        // 2024 SWERVE CONSTANTS
-        
-        public static final SwerveModuleConstantsRecord MOD0 = new SwerveModuleConstantsRecord(
-          2, 
-          1, 
-          9, 
-          -0.09326171875, 
-          false, 
-          true, 
-          false);
+      // Front Left Module - CORRECTED from TunerX
+      public static final SwerveModuleConstantsRecord MOD0 = new SwerveModuleConstantsRecord(
+          2, // driveMotorID (was 4)
+          1, // angleMotorID (was 3)
+          9, // canCoderID (was 10)
+          0.121094, // encoder offset
+          false, // driveMotorInverted (LEFT SIDE - was true)
+          true, // angleMotorInverted
+          false); // canCoderInverted
 
-        public static final SwerveModuleConstantsRecord MOD1 = new SwerveModuleConstantsRecord(
-          4, 
-          3, 
-          10, 
-          0.201171875, 
-          true, 
-          true, 
-          false);
+      // Front Right Module - CORRECTED from TunerX
+      public static final SwerveModuleConstantsRecord MOD1 = new SwerveModuleConstantsRecord(
+          4, // driveMotorID (was 2)
+          3, // angleMotorID (was 1)
+          10, // canCoderID (was 9)
+          0.235107, // encoder offset
+          true, // driveMotorInverted (RIGHT SIDE)
+          true, // angleMotorInverted
+          false); // canCoderInverted
 
-        public static final SwerveModuleConstantsRecord MOD2 = new SwerveModuleConstantsRecord(
-          8, 
-          7, 
-          12, 
-          -0.30322265625, 
-          false, 
-          true, 
-          false);
+      // Back Left Module - CORRECTED from TunerX
+      public static final SwerveModuleConstantsRecord MOD2 = new SwerveModuleConstantsRecord(
+          8, // driveMotorID (correct)
+          7, // angleMotorID (correct)
+          12, // canCoderID (correct)
+          -0.287354, // encoder offset
+          false, // driveMotorInverted (LEFT SIDE - was true)
+          true, // angleMotorInverted
+          false); // canCoderInverted
 
-        public static final SwerveModuleConstantsRecord MOD3 = new SwerveModuleConstantsRecord(
-          6, 
-          5, 
-          11, 
-          0.388427734375, 
-          true, 
-          true, 
-          false); 
-
-
-          // 2025 Constants
-          /* 
-          public static final SwerveModuleConstantsRecord MOD0 = new SwerveModuleConstantsRecord( // Front Left,
-						3, // driveMotorID
-						4, // angleMotorID
-						31, // CanCoder Id
-						// -0.296142578125, // angleOffset of cancoder to mark zero-position
-						0.022582890625, // angleOffset of cancoder to mark zero-position
-						false, // Inversion for drive motor
-						false, // Inversion for angle motor
-						false // inversion for CANcoder
-				);
-       
-        public static final SwerveModuleConstantsRecord MOD1 = new SwerveModuleConstantsRecord( // Front Right
-						1, // driveMotorID
-						2, // angleMotorID
-						30, // CanCoder Id
-						// 0.041015625, // angleOffset of cancoder to mark zero-position
-						-0.3797604921875, // angleOffset of cancoder to mark zero-position
-						true, // Inversion for drive motor
-						false, // Inversion for angle motor
-						false // inversion for CANcoder
-				);
-
-        public static final SwerveModuleConstantsRecord MOD2 = new SwerveModuleConstantsRecord( // Back Left
-						7, // driveMotorID
-						8, // angleMotorID
-						33, // CanCoder Id
-						// -0.296142578125, // angleOffset of cancoder to mark zero-position
-						0.421386796875, // angleOffset of cancoder to mark zero-position
-						false, // Inversion for drive motor
-						false, // Inversion for angle motor
-						false // inversion for CANcoder
-				);
-        public static final SwerveModuleConstantsRecord MOD3 = new SwerveModuleConstantsRecord( // Back Right
-						5, // driveMotorID
-						6, // angleMotorID
-						32, // CanCoder Id
-						// 0.326171875, // angleOffset of cancoder to mark zero-position
-						//0.0576171875, // angleOffset of cancoder to mark zero-position
-						0.088256890625, // angleOffset of cancoder to mark zero-position
-						true, // Inversion for drive motor
-						false, // Inversion for angle motor
-						false // inversion for CANcoder
-				); */
-
+      // Back Right Module - Already correct
+      public static final SwerveModuleConstantsRecord MOD3 = new SwerveModuleConstantsRecord(
+          6, // driveMotorID (correct)
+          5, // angleMotorID (correct)
+          11, // canCoderID (correct)
+          0.381104, // encoder offset
+          true, // driveMotorInverted (RIGHT SIDE)
+          true, // angleMotorInverted
+          false); // canCoderInverted
 
     }
 
   }
 
-  public static final class PathPlannerConstants{
+  public static final class PathPlannerConstants {
     public static final boolean shouldFlipTrajectoryOnRed = true;
   }
-
-  
 
 }

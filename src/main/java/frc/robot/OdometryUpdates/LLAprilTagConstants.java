@@ -17,21 +17,8 @@ public class LLAprilTagConstants {
 		
 	public static enum LLCamera {
 
-			LLLEFT(
-				"limelight-fl"
-			),
-
-			LLRIGHT(
-				"limelight-fr"
-			),
-			LLLEFTUP (
-				"limelight-l"
-			)
-			// ,
-			// LLBACK(
-			// 	"limelight-back"
-			// )
-			;
+			LLBACK("limelight-back");
+			
 			private String cameraname;
 			private boolean prevCleared; // Set to true if nothing was seen last time
 			public boolean isPrevCleared() {

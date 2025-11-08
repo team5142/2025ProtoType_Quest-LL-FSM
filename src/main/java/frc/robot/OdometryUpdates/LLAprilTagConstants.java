@@ -17,7 +17,8 @@ public class LLAprilTagConstants {
 		
 	public static enum LLCamera {
 
-			LLBACK("limelight-back");
+			LLBACK("limelight-back"),
+			LLFRONT("limelight-front");
 			
 			private String cameraname;
 			private boolean prevCleared; // Set to true if nothing was seen last time

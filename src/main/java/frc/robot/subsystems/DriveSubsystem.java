@@ -176,7 +176,7 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                         SwerveConstants.MOD0.driveMotorID(),
                         SwerveConstants.MOD0.cancoderID(),
                         Rotations.of(SwerveConstants.MOD0.angleOffset()),
-                        Inches.of(10.335), Inches.of(10.335),
+                        Inches.of(12.3125), Inches.of(12.3125),
                         SwerveConstants.MOD0.driveMotorInverted(),
                         SwerveConstants.MOD0.angleMotorInverted(),
                         SwerveConstants.MOD0.cancoderInverted()),
@@ -185,7 +185,7 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                         SwerveConstants.MOD1.driveMotorID(),
                         SwerveConstants.MOD1.cancoderID(),
                         Rotations.of(SwerveConstants.MOD1.angleOffset()),
-                        Inches.of(10.335), Inches.of(-10.335),
+                        Inches.of(12.3125), Inches.of(-12.3125),
                         SwerveConstants.MOD1.driveMotorInverted(),
                         SwerveConstants.MOD1.angleMotorInverted(),
                         SwerveConstants.MOD1.cancoderInverted()),
@@ -194,7 +194,7 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                         SwerveConstants.MOD2.driveMotorID(),
                         SwerveConstants.MOD2.cancoderID(),
                         Rotations.of(SwerveConstants.MOD2.angleOffset()),
-                        Inches.of(-10.335), Inches.of(10.335),
+                        Inches.of(-12.3125), Inches.of(12.3125),
                         SwerveConstants.MOD2.driveMotorInverted(),
                         SwerveConstants.MOD2.angleMotorInverted(),
                         SwerveConstants.MOD2.cancoderInverted()),
@@ -203,7 +203,7 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                         SwerveConstants.MOD3.driveMotorID(),
                         SwerveConstants.MOD3.cancoderID(),
                         Rotations.of(SwerveConstants.MOD3.angleOffset()),
-                        Inches.of(-10.335), Inches.of(-10.335),
+                        Inches.of(-12.3125), Inches.of(-12.3125),
                         SwerveConstants.MOD3.driveMotorInverted(),
                         SwerveConstants.MOD3.angleMotorInverted(),
                         SwerveConstants.MOD3.cancoderInverted()));
@@ -441,8 +441,8 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         // SmartDashboard.putString("Manual Drive Command Velocities","X: " +
         // xVelocity_m_per_s + " y: " + yVelocity_m_per_s + " o:" + omega_rad_per_s);
         this.setControl(
-                drive.withVelocityX(xVelocity_m_per_s)
-                        .withVelocityY(yVelocity_m_per_s)
+                drive.withVelocityX(yVelocity_m_per_s)
+                        .withVelocityY(xVelocity_m_per_s)
                         .withRotationalRate(omega_rad_per_s));
     }
 
@@ -565,9 +565,15 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         if(DebugTelemetrySubsystems.chassis){
             SmartDashboard.putNumber("IMU", this.getPigeon2().getYaw().getValueAsDouble());
             SmartDashboard.putString("CTR Pose: ", this.getState().Pose.toString());
+
+            // Add these:
+            SmartDashboard.putNumber("Heading Rate (deg/s)", getTurnRate());
+            SmartDashboard.putNumber("FL Angle", normalizeAngle(getModules()[0].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("FR Angle", normalizeAngle(getModules()[1].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("BL Angle", normalizeAngle(getModules()[2].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("BR Angle", normalizeAngle(getModules()[3].getSteerMotor().getPosition().getValueAsDouble() * 360));
         }
 
-        
         // update history of the chassis poses, needed for odometry updates using Quest or LL
         poseBuffer.addSample(Timer.getFPGATimestamp(), this.getPose());
     }
@@ -585,6 +591,20 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
             updateSimState(deltaTime, RobotController.getBatteryVoltage());
         });
         simNotifier.startPeriodic(kSimLoopPeriod);
+    }
+
+    /**
+     * Normalizes an angle to the range [0, 360) degrees.
+     * 
+     * @param angleDegrees The angle in degrees to normalize
+     * @return The normalized angle in the range [0, 360)
+     */
+    private double normalizeAngle(double angleDegrees) {
+        double normalized = angleDegrees % 360;
+        if (normalized < 0) {
+            normalized += 360;
+        }
+        return normalized;
     }
 
 }

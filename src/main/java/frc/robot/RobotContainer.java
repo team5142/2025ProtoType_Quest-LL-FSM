@@ -6,9 +6,7 @@ package frc.robot;
 
 import frc.robot.Constants;
 import frc.robot.Constants.PathPlannerConstants;
-import frc.robot.Constants.OperatorConstants.OIContants;
 import frc.robot.Constants.OperatorConstants.SwerveConstants;
-import frc.robot.Constants.OperatorConstants.OIContants.ControllerDevice;
 import frc.robot.OdometryUpdates.LLAprilTagConstants.LLVisionConstants.LLCamera;
 import frc.robot.OdometryUpdates.LLAprilTagSubsystem;
 import frc.robot.OdometryUpdates.OdometryUpdatesSubsystem;
@@ -85,17 +83,43 @@ public class RobotContainer {
     testTrajectory();
     setYaws();
 
+    /*
+     * driveSubsystem.setDefaultCommand(
+     * new DriveManuallyCommand(
+     * () -> getDriverForwardBackward(),
+     * () -> getDriverLeftRight(),
+     * () -> getDriverOmegaAxis()));
+     */
+    // ✅ NEW - Direct drive command
     driveSubsystem.setDefaultCommand(
-        new DriveManuallyCommand(
-            () -> getDriverLeftRight(),
-            () -> getDriverForwardBackward(),
-            () -> getDriverOmegaAxis()));
+        driveSubsystem.run(() -> {
+          // Get raw joystick values
+          /*
+           * double forwardBack = -xboxDriveController.getLeftY();
+           * double leftRight = -xboxDriveController.getLeftX();
+           * double rotation = -xboxDriveController.getRightX();
+           * 
+           * // Apply deadband
+           * if (Math.abs(forwardBack) < 0.1) forwardBack = 0;
+           * if (Math.abs(leftRight) < 0.1) leftRight = 0;
+           * if (Math.abs(rotation) < 0.1) rotation = 0;
+           * 
+           * // Scale to max speeds (50% for testing)
+           * double xVel = forwardBack * SwerveConstants.MaxSpeed * 0.5;
+           * double yVel = leftRight * SwerveConstants.MaxSpeed * 0.5;
+           * double omegaVel = rotation * SwerveConstants.MaxAngularRate * 0.5;
+           * 
+           * // Drive!
+           * driveSubsystem.drive(xVel, yVel, omegaVel);
+           */
+          driveSubsystem.drive(getDriverForwardBackward(), getDriverLeftRight(), getDriverOmegaAxis());
+        }));
     FollowPathCommand.warmupCommand().schedule();
   }
 
   // Driver controls - properly scaled to max speeds
   private double getDriverForwardBackward() {
-    double rawValue = xboxDriveController.getLeftY();
+    double rawValue = -xboxDriveController.getLeftY();
 
     // Aggressive stop on joystick release
     if (Math.abs(rawValue) < 0.1) {
@@ -111,7 +135,7 @@ public class RobotContainer {
   }
 
   private double getDriverLeftRight() {
-    double rawValue = xboxDriveController.getLeftX();
+    double rawValue = -xboxDriveController.getLeftX();
 
     // Aggressive stop on joystick release
     if (Math.abs(rawValue) < 0.1) {
@@ -147,130 +171,134 @@ public class RobotContainer {
     RobotModeTriggers.disabled()
         .whileTrue(driveSubsystem.applyRequest(() -> driveSubsystem.getIdle()).ignoringDisable(true));
     driveSubsystem.registerTelemetry(logger::telemeterize);
-    xboxDriveController.back().onTrue(
-        new InstantCommand(() -> {
-          System.out.println("=== Limelight Test ===");
-          String cam = LLCamera.LLBACK.getCameraName();
-          System.out.println("Testing camera: " + cam);
-
-          try {
-            boolean hasTarget = LimelightHelpers.getTV(cam);
-            double tagID = LimelightHelpers.getFiducialID(cam);
-            // Null check before accessing pose
-            var pose = LimelightHelpers.getBotPoseEstimate_wpiBlue(cam);
-
-            System.out.println("Has Target: " + hasTarget);
-            System.out.println("Tag ID: " + (int) tagID);
-
-            if (pose != null) {
-              System.out.println("Tag Count: " + pose.tagCount);
-              System.out.println("Pose: " + pose.pose);
-              System.out.println("Latency: " + pose.latency + "ms");
-
-              if (RobotContainer.llAprilTagSubsystem.isAnyReefTagID((int) tagID)) {
-                System.out.println("✅ REEF TAG!");
-              }
-            } else {
-              System.out.println("❌ Pose is NULL - camera not connected or wrong name");
-            }
-
-          } catch (Exception e) {
-            System.out.println("❌ ERROR: " + e.getMessage());
-            e.printStackTrace();
-          }
-        }));
-  }
-
-  public Command stopRobotCommand() {
-    System.out.println("***Stopping Robot");
-    return driveSubsystem.applyRequest(() -> driveSubsystem.getDrive().withVelocityX(0) // Drive forward with negative Y
-                                                                                        // (forward)
-        .withVelocityY(0) // Drive left with negative X (left)
-        .withRotationalRate(0) // Drive counterclockwise with negative X (left)
-
-    );
   }
 
   private void testTrajectory() {
-    xboxDriveController.povUp().onTrue(new TwoMeterTest());
-    // D-Pad RIGHT: L-shape test
-    xboxDriveController.povRight().onTrue(new LShapeTest());
-
+    // D-Pad DOWN: Detailed rotation debug (SmartDashboard + Console)
     xboxDriveController.povDown().onTrue(
         new InstantCommand(() -> {
-          System.out.println("=== HEADING DEBUG ===");
-          System.out.println("Robot Heading: " + driveSubsystem.getPose().getRotation().getDegrees() + "°");
-          System.out.println("IMU Yaw: " + driveSubsystem.getPigeon2().getYaw().getValueAsDouble() + "°");
-          System.out.println("Pose: " + driveSubsystem.getPose());
-          System.out.println("==================");
+          // Raw gyro value
+          double gyroYaw = driveSubsystem.getPigeon2().getYaw().getValueAsDouble();
+
+          // Pose rotation
+          Rotation2d poseRotation = driveSubsystem.getPose().getRotation();
+          Pose2d fullPose = driveSubsystem.getPose();
+
+          // Calculate difference
+          double difference = Math.abs(gyroYaw - poseRotation.getDegrees());
+
+          // === SMARTDASHBOARD OUTPUT (no slashes) ===
+          SmartDashboard.putNumber("Debug Gyro Yaw", gyroYaw);
+          SmartDashboard.putNumber("Debug Pose Rotation", poseRotation.getDegrees());
+          SmartDashboard.putNumber("Debug Pose Radians", poseRotation.getRadians());
+          SmartDashboard.putNumber("Debug Difference", difference);
+          SmartDashboard.putNumber("Debug Pose X", fullPose.getX());
+          SmartDashboard.putNumber("Debug Pose Y", fullPose.getY());
+
+          // Create summary string for easy copying
+          String debugSummary = String.format(
+              "Gyro: %.2f° | Pose: %.2f° | Diff: %.2f° | X: %.3f | Y: %.3f",
+              gyroYaw,
+              poseRotation.getDegrees(),
+              difference,
+              fullPose.getX(),
+              fullPose.getY());
+          SmartDashboard.putString("Debug Summary", debugSummary);
+
+          // === CONSOLE OUTPUT ===
+          System.out.println("=== DETAILED ROTATION DEBUG ===");
+          System.out.println("Gyro Yaw (raw): " + gyroYaw + "°");
+          System.out.println("Pose Rotation (degrees): " + poseRotation.getDegrees() + "°");
+          System.out.println("Pose Rotation (radians): " + poseRotation.getRadians());
+          System.out.println("Pose (full): " + fullPose);
+          System.out.println("Difference: " + difference + "°");
+          System.out.println("==============================");
         }));
 
-    xboxDriveController.a()
-        .onTrue(new OneMeterForwardPPCommand());
-    // new JoystickButton(xboxDriveController, 2)
-    // .onTrue(new ThreeMeterForwardPPCommand());
-    xboxDriveController.b()
-        .onTrue(new ReturnTestPPCommand())
-        .onFalse(new StopRobot());
-    xboxDriveController.x()
-        .onTrue(new InstantCommand(() -> questNavSubsystem.resetQuestOdometry(new Pose2d(10, 10, Rotation2d.k180deg))));
-    xboxDriveController.y()
-        .whileTrue(new PathPlannerAuto("Reef Off"))
-        .onFalse(new StopRobot());
-    xboxDriveController.rightBumper()
-        .whileTrue(new PathPlannerAuto("Reef off and Reef on"))
-        .onFalse(new StopRobot());
+    // D-Pad LEFT: Reset to Reef Tag 17 position
+    xboxDriveController.povLeft().onTrue(
+        new InstantCommand(() -> {
+          double desiredAngle = 60.0;
+
+          // STEP 1: Reset the Pigeon2 gyro to desired angle
+          driveSubsystem.getPigeon2().setYaw(desiredAngle);
+
+          // STEP 2: Reset the pose to same angle
+          Pose2d reefPose = new Pose2d(
+              3.897,
+              2.957,
+              Rotation2d.fromDegrees(desiredAngle));
+
+          driveSubsystem.resetPose(reefPose);
+          questNavSubsystem.resetQuestOdometry(reefPose);
+
+          // ✅ STEP 3: Update operator perspective to match robot orientation
+          driveSubsystem.setOperatorPerspectiveForward(Rotation2d.fromDegrees(desiredAngle));
+
+          // === SMARTDASHBOARD OUTPUT ===
+          SmartDashboard.putString("Reset Location", "Reef Tag 17 (60°)");
+          SmartDashboard.putNumber("Reset Target Angle", desiredAngle);
+          SmartDashboard.putNumber("Reset Perspective", desiredAngle + 180); // ✅ Added
+
+          // Immediately read back and display
+          double actualGyro = driveSubsystem.getPigeon2().getYaw().getValueAsDouble();
+          double actualPose = driveSubsystem.getPose().getRotation().getDegrees();
+
+          SmartDashboard.putNumber("Reset Actual Gyro", actualGyro);
+          SmartDashboard.putNumber("Reset Actual Pose", actualPose);
+
+          String resetSummary = String.format(
+              "Set: %.1f° | Gyro: %.2f° | Pose: %.2f° | Perspective: %.1f°",
+              desiredAngle,
+              actualGyro,
+              actualPose,
+              desiredAngle); // ✅ Added perspective to summary
+          SmartDashboard.putString("Reset Summary", resetSummary);
+        }));
   }
 
   public void setYaws() {
-    // Button 8 (Start): Zero chassis and Quest yaw
-    /*
-     * xboxDriveController.start()
-     * .onTrue(new InstantCommand(() -> driveSubsystem.zeroChassisYaw())
-     * .andThen(new InstantCommand(() -> questNavSubsystem.zeroYaw())));
-     * 
-     */
-    // Button 7 (Back): Reset Quest to zero pose
-    xboxDriveController.back()
-        .onTrue(new InstantCommand(() -> questNavSubsystem.resetToZeroPose()));
-    /*
-     * 
-     * xboxDriveController.leftTrigger(0.5).whileTrue(
-     * Commands.startEnd(
-     * () -> odometryUpdateSubsystem.enableHeadingUpdatesForCommand(),
-     * () -> odometryUpdateSubsystem.disableHeadingUpdatesForCommand()
-     * )
-     * );
-     * 
-     */
-    // Button 5 (Left Bumper): Reset to downfield starting pose
 
     xboxDriveController.leftBumper()
         .onTrue(new InstantCommand(() -> {
-          // Determine pose AND heading based on alliance color
-          Pose2d downfieldPose;
+          // Get current position
+          Pose2d currentPose = driveSubsystem.getPose();
+          double currentX = currentPose.getX();
+          double currentY = currentPose.getY();
+          double oldRotation = currentPose.getRotation().getDegrees();
 
-          if (isAllianceRed) {
-            // Red alliance - downfield facing toward Blue (0°)
-            downfieldPose = new Pose2d(15.0, 5.5, Rotation2d.kZero);
-          } else {
-            // Blue alliance - downfield facing toward Red (180°)
-            downfieldPose = new Pose2d(1.5, 5.5, Rotation2d.k180deg);
-          }
+          // Downfield = toward red (0°) for both alliances
+          Rotation2d downfieldRotation = Rotation2d.kZero;
 
-          // Reset both Quest and drive odometry
-          questNavSubsystem.resetQuestOdometry(downfieldPose);
-          driveSubsystem.resetPose(downfieldPose);
+          // Create new pose: SAME position, NEW rotation
+          Pose2d orientedPose = new Pose2d(currentX, currentY, downfieldRotation);
 
-          System.out.println("*** Full reset to downfield: " + downfieldPose);
+          // Reset gyro
+          driveSubsystem.getPigeon2().setYaw(0);
+
+          // Update odometry
+          questNavSubsystem.resetQuestOdometry(orientedPose);
+          driveSubsystem.resetPose(orientedPose);
+
+          // Update operator perspective
+          driveSubsystem.setOperatorPerspectiveForward(Rotation2d.kZero);
+
+          // Publish to SmartDashboard
+          SmartDashboard.putNumber("Orient Old Rotation", oldRotation);
+          SmartDashboard.putNumber("Orient New Rotation", 0);
+          SmartDashboard.putString("Orient Summary",
+              String.format("(%.2f, %.2f): %.0f° → 0°", currentX, currentY, oldRotation));
+
+          System.out.println("=== ORIENT TO DOWNFIELD ===");
+          System.out.println("Position: (" + currentX + ", " + currentY + ") - UNCHANGED");
+          System.out.println("Rotation: " + oldRotation + "° → 0°");
+          System.out.println("Operator perspective: 0° (forward = toward red)");
+          System.out.println("==========================");
         }));
   }
 
   public static Command runTrajectoryPathPlannerWithForceResetOfStartingPose(String tr,
       boolean shouldResetOdometryToStartingPose, boolean flipTrajectory) {
-
-    // alex test
-    System.out.println("Start drive routine");
 
     try {
       // Load the path you want to follow using its name in the GUI
@@ -307,11 +335,6 @@ public class RobotContainer {
       return Commands.none();
     }
   }
-
-  // alex test
-  // public static Command testCommand2() {
-  // return new PrintCommand("Test 2 Command");
-  // }
 
   // Alliance color determination
   public void checkAllianceColor() {

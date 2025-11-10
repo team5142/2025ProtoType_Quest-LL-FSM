@@ -45,7 +45,7 @@ public class LLAprilTagConstants {
 
     public static final class VisionHelperConstants {
 		public static final double distanceBetweenReefPoles = Units.inchesToMeters(12.5); // page 162 https://firstfrc.blob.core.windows.net/frc2025/FieldAssets/2025FieldDrawings.pdf
-		public static final double bumperWidth = Units.inchesToMeters(2.5);
+		public static final double bumperWidth = Units.inchesToMeters(0);
 		public static class RobotPoseConstants {
 			public static Map<String, Pose2d> visionRobotPoses = new HashMap<String, Pose2d>();
 			public static Map<Integer, String> tagNumberToKey = new HashMap<Integer, String>();

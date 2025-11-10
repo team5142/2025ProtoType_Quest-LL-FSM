@@ -43,6 +43,7 @@ import frc.robot.Constants.DebugTelemetrySubsystems;
 import frc.robot.Constants.OperatorConstants.SwerveConstants;
 import frc.robot.OdometryUpdates.OdometryConstants;
 import frc.robot.RobotContainer;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 
 /**
  * Class that extends the Phoenix 6 SwerveDrivetrain class and implements
@@ -52,8 +53,8 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
     // Requests moved from RobotContainer:
 
     // Chassis Pose for the last 0.6 seconds
-    private final TimeInterpolatableBuffer<Pose2d> poseBuffer =
-      TimeInterpolatableBuffer.createBuffer(SwerveConstants.CHASSIS_POSE_HISTORY_TIME); // ~0.6 s history for backdating
+    private final TimeInterpolatableBuffer<Pose2d> poseBuffer = TimeInterpolatableBuffer
+            .createBuffer(SwerveConstants.CHASSIS_POSE_HISTORY_TIME); // ~0.6 s history for backdating
 
     private final com.ctre.phoenix6.swerve.SwerveRequest.SwerveDriveBrake brake = new com.ctre.phoenix6.swerve.SwerveRequest.SwerveDriveBrake();
     private final com.ctre.phoenix6.swerve.SwerveRequest.PointWheelsAt point = new com.ctre.phoenix6.swerve.SwerveRequest.PointWheelsAt();
@@ -153,6 +154,9 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
     /* The SysId routine to test */
     private SysIdRoutine sysIdRoutineToApply = sysIdRoutineTranslation;
 
+    // Add Field2d widget for visualization
+    private final Field2d field = new Field2d();
+
     /**
      * Constructs a CTRE SwerveDrivetrain using the specified constants.
      * <p>
@@ -166,49 +170,14 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
      * @param modules             Constants for each specific module
      */
 
-
     /** Creates the drivetrain using Constants.SwerveConstants. */
     public static DriveSubsystem createDrivetrain() {
         return new DriveSubsystem(
                 SwerveConstants.DrivetrainConstants,
-                SwerveConstants.ConstantCreator.createModuleConstants(
-                        SwerveConstants.MOD0.angleMotorID(),
-                        SwerveConstants.MOD0.driveMotorID(),
-                        SwerveConstants.MOD0.cancoderID(),
-                        Rotations.of(SwerveConstants.MOD0.angleOffset()),
-                        Inches.of(12.3125), Inches.of(12.3125),
-                        SwerveConstants.MOD0.driveMotorInverted(),
-                        SwerveConstants.MOD0.angleMotorInverted(),
-                        SwerveConstants.MOD0.cancoderInverted()),
-                SwerveConstants.ConstantCreator.createModuleConstants(
-                        SwerveConstants.MOD1.angleMotorID(),
-                        SwerveConstants.MOD1.driveMotorID(),
-                        SwerveConstants.MOD1.cancoderID(),
-                        Rotations.of(SwerveConstants.MOD1.angleOffset()),
-                        Inches.of(12.3125), Inches.of(-12.3125),
-                        SwerveConstants.MOD1.driveMotorInverted(),
-                        SwerveConstants.MOD1.angleMotorInverted(),
-                        SwerveConstants.MOD1.cancoderInverted()),
-                SwerveConstants.ConstantCreator.createModuleConstants(
-                        SwerveConstants.MOD2.angleMotorID(),
-                        SwerveConstants.MOD2.driveMotorID(),
-                        SwerveConstants.MOD2.cancoderID(),
-                        Rotations.of(SwerveConstants.MOD2.angleOffset()),
-                        Inches.of(-12.3125), Inches.of(12.3125),
-                        SwerveConstants.MOD2.driveMotorInverted(),
-                        SwerveConstants.MOD2.angleMotorInverted(),
-                        SwerveConstants.MOD2.cancoderInverted()),
-                SwerveConstants.ConstantCreator.createModuleConstants(
-                        SwerveConstants.MOD3.angleMotorID(),
-                        SwerveConstants.MOD3.driveMotorID(),
-                        SwerveConstants.MOD3.cancoderID(),
-                        Rotations.of(SwerveConstants.MOD3.angleOffset()),
-                        Inches.of(-12.3125), Inches.of(-12.3125),
-                        SwerveConstants.MOD3.driveMotorInverted(),
-                        SwerveConstants.MOD3.angleMotorInverted(),
-                        SwerveConstants.MOD3.cancoderInverted()));
-
-
+                SwerveConstants.FrontLeft,
+                SwerveConstants.FrontRight,
+                SwerveConstants.BackLeft,
+                SwerveConstants.BackRight);
     }
 
     public DriveSubsystem(
@@ -217,6 +186,10 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         super(
                 TalonFX::new, TalonFX::new, CANcoder::new,
                 drivetrainConstants, modules);
+
+        // Publish field widget to SmartDashboard
+        SmartDashboard.putData("Field", field);
+
         if (Utils.isSimulation()) {
             startSimThread();
         }
@@ -309,13 +282,13 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
                                     .withWheelForceFeedforwardsX(feedforwards.robotRelativeForcesXNewtons())
                                     .withWheelForceFeedforwardsY(feedforwards.robotRelativeForcesYNewtons())),
                     new PPHolonomicDriveController(
-                        new PIDConstants(SwerveConstants.kTrans_kP,
-                            SwerveConstants.kTrans_kI, 
-                            SwerveConstants.kTrans_kD),
-                        new PIDConstants(SwerveConstants.kRot_kP, 
-                            SwerveConstants.kRot_kI, 
-                            SwerveConstants.kRot_kD)), // Use tuned rotation gains
-                            config,
+                            new PIDConstants(SwerveConstants.kTrans_kP,
+                                    SwerveConstants.kTrans_kI,
+                                    SwerveConstants.kTrans_kD),
+                            new PIDConstants(SwerveConstants.kRot_kP,
+                                    SwerveConstants.kRot_kI,
+                                    SwerveConstants.kRot_kD)), // Use tuned rotation gains
+                    config,
                     // Assume the path needs to be flipped for Red vs Blue, this is normally the
                     // case
                     () -> DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red,
@@ -417,8 +390,7 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
     public void addVisionMeasurement(
             Pose2d visionRobotPoseMeters,
             double timestampSeconds,
-            Matrix<N3, N1> visionMeasurementStdDevs
-            ) {
+            Matrix<N3, N1> visionMeasurementStdDevs) {
         super.addVisionMeasurement(visionRobotPoseMeters, Utils.fpgaToCurrentTime(timestampSeconds),
                 visionMeasurementStdDevs);
     }
@@ -441,8 +413,8 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         // SmartDashboard.putString("Manual Drive Command Velocities","X: " +
         // xVelocity_m_per_s + " y: " + yVelocity_m_per_s + " o:" + omega_rad_per_s);
         this.setControl(
-                drive.withVelocityX(yVelocity_m_per_s)
-                        .withVelocityY(xVelocity_m_per_s)
+                drive.withVelocityX(xVelocity_m_per_s)
+                        .withVelocityY(yVelocity_m_per_s)
                         .withRotationalRate(omega_rad_per_s));
     }
 
@@ -537,8 +509,6 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         return poseBuffer.getSample(t);
     }
 
-    
-
     @Override
     public void periodic() {
         /*
@@ -562,19 +532,33 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
             });
         }
 
-        if(DebugTelemetrySubsystems.chassis){
+        // Update field widget with current robot pose
+        field.setRobotPose(getPose());
+
+        // Also publish raw pose values for debugging
+        Pose2d currentPose = getPose();
+        SmartDashboard.putNumber("Robot/X", currentPose.getX());
+        SmartDashboard.putNumber("Robot/Y", currentPose.getY());
+        SmartDashboard.putNumber("Robot/Rotation", currentPose.getRotation().getDegrees());
+
+        if (DebugTelemetrySubsystems.chassis) {
             SmartDashboard.putNumber("IMU", this.getPigeon2().getYaw().getValueAsDouble());
-            SmartDashboard.putString("CTR Pose: ", this.getState().Pose.toString());
+            // SmartDashboard.putString("CTR Pose: ", this.getState().Pose.toString());
 
             // Add these:
             SmartDashboard.putNumber("Heading Rate (deg/s)", getTurnRate());
-            SmartDashboard.putNumber("FL Angle", normalizeAngle(getModules()[0].getSteerMotor().getPosition().getValueAsDouble() * 360));
-            SmartDashboard.putNumber("FR Angle", normalizeAngle(getModules()[1].getSteerMotor().getPosition().getValueAsDouble() * 360));
-            SmartDashboard.putNumber("BL Angle", normalizeAngle(getModules()[2].getSteerMotor().getPosition().getValueAsDouble() * 360));
-            SmartDashboard.putNumber("BR Angle", normalizeAngle(getModules()[3].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("FL Angle",
+                    normalizeAngle(getModules()[0].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("FR Angle",
+                    normalizeAngle(getModules()[1].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("BL Angle",
+                    normalizeAngle(getModules()[2].getSteerMotor().getPosition().getValueAsDouble() * 360));
+            SmartDashboard.putNumber("BR Angle",
+                    normalizeAngle(getModules()[3].getSteerMotor().getPosition().getValueAsDouble() * 360));
         }
 
-        // update history of the chassis poses, needed for odometry updates using Quest or LL
+        // update history of the chassis poses, needed for odometry updates using Quest
+        // or LL
         poseBuffer.addSample(Timer.getFPGATimestamp(), this.getPose());
     }
 

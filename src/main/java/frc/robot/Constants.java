@@ -56,11 +56,11 @@ public final class Constants {
     }
 
     public static final class DebugTelemetrySubsystems {
-        public static final boolean odometry = true;
+        public static final boolean odometry = false;
         public static final boolean imu = true;
         public static final boolean chassis = true;
-        public static final boolean ll = true;
-        public static final boolean questnav = true;
+        public static final boolean ll = false;
+        public static final boolean questnav = false;
     }
 
     public static class OperatorConstants {
@@ -90,8 +90,8 @@ public final class Constants {
             
             // Drive motor PID gains - NEW from TunerX
             private static final Slot0Configs driveGains = new Slot0Configs()
-                    .withKP(0.1).withKI(0).withKD(0)
-                    .withKS(0).withKV(0.124);
+                    .withKP(0.15).withKI(0).withKD(.02)
+                    .withKS(0.12).withKV(0.124);
             
             // Rotation controller PID gains - TUNED from TunerX project
             public static final double kRot_kP = 13.616;
@@ -177,45 +177,45 @@ public final class Constants {
                     boolean driveMotorInverted, boolean angleMotorInverted, boolean cancoderInverted) {
             }
 
-            // Front Left Module - NEW OFFSET after motor replacement
+            // Front Left Module - UPDATED OFFSET
             public static final SwerveModuleConstantsRecord MOD0 = new SwerveModuleConstantsRecord(
                     2,
                     1,
                     9,
-                    -0.314697265625, // NEW offset from TunerX
+                    0.073974609375, // ✅ NEW from TunerX (was -0.314697265625)
                     false, // driveMotorInverted (LEFT SIDE)
                     true, // angleMotorInverted
                     false // canCoderInverted
             );
 
-            // Front Right Module
+            // Front Right Module - UPDATED OFFSET
             public static final SwerveModuleConstantsRecord MOD1 = new SwerveModuleConstantsRecord(
                     4,
                     3,
                     10,
-                    0.20947265625, // Updated from TunerX
+                    0.21533203125, // ✅ NEW from TunerX (was 0.20947265625)
                     true, // driveMotorInverted (RIGHT SIDE)
                     true, // angleMotorInverted
                     false // canCoderInverted
             );
 
-            // Back Left Module
+            // Back Left Module - UPDATED OFFSET
             public static final SwerveModuleConstantsRecord MOD2 = new SwerveModuleConstantsRecord(
                     8,
                     7,
                     12,
-                    -0.2939453125, // Updated from TunerX
+                    -0.2998046875, // ✅ NEW from TunerX (was -0.2939453125)
                     false, // driveMotorInverted (LEFT SIDE)
                     true, // angleMotorInverted
                     false // canCoderInverted
             );
 
-            // Back Right Module
+            // Back Right Module - UPDATED OFFSET
             public static final SwerveModuleConstantsRecord MOD3 = new SwerveModuleConstantsRecord(
                     6,
                     5,
                     11,
-                    0.3935546875, // Updated from TunerX
+                    0.389892578125, // ✅ NEW from TunerX (was 0.3935546875)
                     true, // driveMotorInverted (RIGHT SIDE)
                     true, // angleMotorInverted
                     false // canCoderInverted

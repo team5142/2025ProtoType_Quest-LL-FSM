@@ -34,6 +34,7 @@ import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.RobotModeTriggers;
 import frc.robot.commands.DriveManuallyCommand;
+import frc.robot.commands.DriveToTargetCommand;
 import frc.robot.commands.LShapeTest;
 import frc.robot.commands.OneMeterForwardPPCommand;
 import frc.robot.commands.ReturnTestPPCommand;
@@ -44,6 +45,12 @@ import frc.robot.lib.TrajectoryHelper;
 import frc.robot.subsystems.DriveSubsystem;
 import com.pathplanner.lib.commands.PathPlannerAuto;
 import edu.wpi.first.math.filter.SlewRateLimiter;
+import frc.robot.commands.TurnToTargetCommand;
+import frc.robot.commands.DriveToTargetCommand;
+
+
+import frc.robot.subsystems.PhotonVisionSubsystem;
+import frc.robot.subsystems.PhotonVisionSubsystem.GamePiece;
 
 public class RobotContainer {
 
@@ -62,11 +69,12 @@ public class RobotContainer {
   public static QuestNavSubsystem questNavSubsystem = new QuestNavSubsystem();
   public static LLAprilTagSubsystem llAprilTagSubsystem = new LLAprilTagSubsystem();
   public static OdometryUpdatesSubsystem odometryUpdateSubsystem = new OdometryUpdatesSubsystem();
+  public static PhotonVisionSubsystem photonVisionSubsystem = new PhotonVisionSubsystem();
 
   // Slew rate limiters for smooth acceleration
   private final SlewRateLimiter xLimiter = new SlewRateLimiter(3); // 3 m/s² acceleration
   private final SlewRateLimiter yLimiter = new SlewRateLimiter(3); // 3 m/s² acceleration
-  private final SlewRateLimiter rotLimiter = new SlewRateLimiter(1.5); // 6 rad/s² rotational acceleration
+  private final SlewRateLimiter rotLimiter = new SlewRateLimiter(6); // 6 rad/s² rotational acceleration
 
   private double lastXCommand = 0;
   private double lastYCommand = 0;
@@ -80,6 +88,7 @@ public class RobotContainer {
 
   public RobotContainer() {
     configureBindings();
+    configureVisionBindings();
     testTrajectory();
     setYaws();
 
@@ -172,6 +181,38 @@ public class RobotContainer {
         .whileTrue(driveSubsystem.applyRequest(() -> driveSubsystem.getIdle()).ignoringDisable(true));
     driveSubsystem.registerTelemetry(logger::telemeterize);
   }
+
+  private void configureVisionBindings() {
+    // D-Pad UP: Switch to Algae detection
+    xboxDriveController.povUp().onTrue(
+        new InstantCommand(() -> photonVisionSubsystem.setAlgaeDetection()));
+    
+    // D-Pad RIGHT: Switch to Coral detection
+    xboxDriveController.povRight().onTrue(
+        new InstantCommand(() -> photonVisionSubsystem.setCoralDetection()));
+    
+    // ✅ A button: Turn to face target (HOLD to track)
+    xboxDriveController.a().whileTrue(
+        new TurnToTargetCommand(driveSubsystem, photonVisionSubsystem)
+    );
+    
+    // ✅ B button: Drive to target (HOLD to approach)
+    xboxDriveController.b().whileTrue(
+        new DriveToTargetCommand(driveSubsystem, photonVisionSubsystem)
+    );
+    
+    // X button: Print detection info (moved from B)
+    xboxDriveController.x().onTrue(
+        new InstantCommand(() -> {
+            if (photonVisionSubsystem.hasValidTarget()) {
+                System.out.println("🎯 Detected " + photonVisionSubsystem.getCurrentTargetType().getName());
+                System.out.println("   Distance: " + photonVisionSubsystem.getDistanceToTarget() + " m");
+                System.out.println("   Angle: " + photonVisionSubsystem.getYawToTarget() + "°");
+            } else {
+                System.out.println("❌ No target detected");
+            }
+        }));
+}
 
   private void testTrajectory() {
     // D-Pad DOWN: Detailed rotation debug (SmartDashboard + Console)

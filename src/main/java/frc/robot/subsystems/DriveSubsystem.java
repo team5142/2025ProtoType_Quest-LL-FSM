@@ -91,6 +91,24 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
             .withRotationalDeadband(SwerveConstants.MaxAngularRate * SwerveConstants.DeadbandRatioAngular) // Add a 10%
                                                                                                            // deadband
             .withDriveRequestType(DriveRequestType.OpenLoopVoltage); // I want field-centric
+
+    private final com.ctre.phoenix6.swerve.SwerveRequest.FieldCentric visionDrive = new com.ctre.phoenix6.swerve.SwerveRequest.FieldCentric()
+            .withDeadband(0.0) // ✅ NO DEADBAND for vision
+            .withRotationalDeadband(0.0) // ✅ NO DEADBAND for rotation
+            .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
+
+    // Add this new method around line 440:
+    public void driveVision(double xVelocity_m_per_s, double yVelocity_m_per_s, double omega_rad_per_s) {
+        System.out.printf("📡 driveVision(X: %.3f, Y: %.3f, Omega: %.3f)\n",
+                xVelocity_m_per_s, yVelocity_m_per_s, omega_rad_per_s);
+
+        this.setControl(
+                visionDrive.withVelocityX(xVelocity_m_per_s)
+                        .withVelocityY(yVelocity_m_per_s)
+                        .withRotationalRate(omega_rad_per_s));
+
+        System.out.println("📡 setControl() called with visionDrive request");
+    }
     // driving in open loop
 
     /*
@@ -412,10 +430,15 @@ public class DriveSubsystem extends SwerveDrivetrain<TalonFX, TalonFX, CANcoder>
         // o:" + omega_rad_per_s/SwerveChassis.MaxAngularRate);
         // SmartDashboard.putString("Manual Drive Command Velocities","X: " +
         // xVelocity_m_per_s + " y: " + yVelocity_m_per_s + " o:" + omega_rad_per_s);
+
+        System.out.printf("📡 DriveSubsystem.drive(X: %.3f, Y: %.3f, Omega: %.3f)\n",
+                xVelocity_m_per_s, yVelocity_m_per_s, omega_rad_per_s);
+
         this.setControl(
                 drive.withVelocityX(xVelocity_m_per_s)
                         .withVelocityY(yVelocity_m_per_s)
                         .withRotationalRate(omega_rad_per_s));
+        System.out.println("📡 setControl() called");
     }
 
     public void driveRobotCentric(double xVelocity_m_per_s, double yVelocity_m_per_s, double omega_rad_per_s) {
